@@ -1,26 +1,250 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+   HARMONY Design System — Tailwind v4 Theme
+   ============================================================ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- Brand Palette --- */
+  --color-harmony-gold: #F59E0B;
+  --color-harmony-gold-light: #FBBF24;
+  --color-harmony-gold-dark: #D97706;
+  --color-harmony-rose: #FB7185;
+  --color-harmony-violet: #A78BFA;
+  --color-harmony-cyan: #06B6D4;
+  --color-harmony-emerald: #34D399;
+
+  /* --- Surfaces --- */
+  --color-deep: #0F0B1E;
+  --color-surface: #1A1533;
+
+  /* --- Typography --- */
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================================
+   CSS Custom Properties (available outside Tailwind utilities)
+   ============================================================ */
+
+:root {
+  /* Gold spectrum */
+  --harmony-gold: #F59E0B;
+  --harmony-gold-light: #FBBF24;
+  --harmony-gold-dark: #D97706;
+  --harmony-gold-glow: rgba(245, 158, 11, 0.3);
+
+  /* Accent spectrum */
+  --harmony-rose: #FB7185;
+  --harmony-violet: #A78BFA;
+  --harmony-cyan: #06B6D4;
+  --harmony-emerald: #34D399;
+
+  /* Background layers */
+  --bg-deep: #0F0B1E;
+  --bg-surface: #1A1533;
+  --bg-card: rgba(26, 21, 51, 0.8);
+  --bg-elevated: rgba(40, 32, 74, 0.6);
+
+  /* Text hierarchy */
+  --text-primary: #FFF7ED;
+  --text-secondary: #D4C5A9;
+  --text-muted: #8B7E6A;
+
+  /* Borders */
+  --border: rgba(245, 158, 11, 0.12);
+  --border-hover: rgba(245, 158, 11, 0.3);
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+body {
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.75;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-playfair), Georgia, serif;
+  line-height: 1.2;
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.35);
+  color: #FFF7ED;
+}
+
+/* Focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--harmony-gold);
+  outline-offset: 2px;
+}
+
+/* Smooth anchor scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes goldGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2), 0 0 24px rgba(245, 158, 11, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.4), 0 0 48px rgba(245, 158, 11, 0.2);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes sineWave {
+  0% {
+    d: path("M 0 50 Q 25 30, 50 50 T 100 50");
+  }
+  50% {
+    d: path("M 0 50 Q 25 70, 50 50 T 100 50");
+  }
+  100% {
+    d: path("M 0 50 Q 25 30, 50 50 T 100 50");
+  }
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out both;
+}
+
+.animate-gentle-pulse {
+  animation: gentlePulse 3s ease-in-out infinite;
+}
+
+.animate-gold-glow {
+  animation: goldGlow 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-sine-wave {
+  animation: sineWave 2s ease-in-out infinite;
+}
+
+/* Staggered entrance delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-1000 { animation-delay: 1000ms; }
+
+/* ============================================================
+   Scrollbar
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.25);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.45);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.25) var(--bg-deep);
+}
+
+/* ============================================================
+   Reduced Motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   Print
+   ============================================================ */
+
+@media print {
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: black;
+  }
 }
