@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 import { demoComposition } from "@/lib/demo-composition";
 
 export async function POST(request: NextRequest) {
@@ -6,7 +7,7 @@ export async function POST(request: NextRequest) {
     const { moment, emotions, instrument, durationSeconds } = await request.json();
 
     // ---------- Fallback to demo if no API key ----------
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         success: true,
@@ -62,33 +63,18 @@ RULES:
 
     const userMessage = `Compose a ${instrument} piece (emotions: ${emotions.join(", ")}) for this moment: "${moment}"`;
 
-    // ---------- Call Claude ----------
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
-      }),
+    // ---------- Call OpenAI GPT-4o ----------
+    const client = new OpenAI({ apiKey });
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 4000,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Anthropic API error:", errorText);
-      return NextResponse.json(
-        { success: false, error: "AI composition failed. Please try again." },
-        { status: 500 },
-      );
-    }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text ?? "";
+    const text = completion.choices[0]?.message?.content || "";
 
     // ---------- Parse JSON ----------
     // Strip markdown fences if present
