@@ -11,12 +11,18 @@ import ComposingLoader from "@/components/ComposingLoader";
 import PianoVisualization from "@/components/PianoVisualization";
 import ParticleCanvas from "@/components/ParticleCanvas";
 import TransportControls from "@/components/TransportControls";
+import WaveformVisualizer from "@/components/WaveformVisualizer";
+import MoodRing from "@/components/MoodRing";
+import MusicDNA from "@/components/MusicDNA";
 import { emotionColors } from "@/lib/emotion-colors";
 import { saveComposition } from "@/lib/music-storage";
 import { encodeComposition, generateShareText } from "@/lib/share";
 import type { Composition, Note } from "@/lib/audio-engine";
 
 type Step = "input" | "mood" | "sound" | "composing" | "playback";
+
+const STEP_LABELS = ["Describe", "Emotion", "Instrument", "Listen"];
+const STEP_MAP: Record<Step, number> = { input: 0, mood: 1, sound: 2, composing: 3, playback: 3 };
 
 const placeholders = [
   "The morning light through my kitchen window on a Sunday...",
@@ -25,6 +31,66 @@ const placeholders = [
   "Standing on a mountain peak, the world below me silent...",
   "The sound of rain on our tin roof when I was a child...",
 ];
+
+function StepIndicator({ currentStep, emotionColor }: { currentStep: Step; emotionColor: string }) {
+  const activeIndex = STEP_MAP[currentStep];
+
+  return (
+    <div className="flex items-center justify-center gap-0 mb-12">
+      {STEP_LABELS.map((label, i) => {
+        const isActive = i === activeIndex;
+        const isCompleted = i < activeIndex;
+
+        return (
+          <div key={label} className="flex items-center">
+            <div className="flex flex-col items-center gap-2">
+              <motion.div
+                className="relative w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
+                animate={{
+                  backgroundColor: isActive ? emotionColor : isCompleted ? `${emotionColor}88` : "rgba(255,255,255,0.06)",
+                  color: isActive || isCompleted ? "#0F0B1E" : "#8B7E6A",
+                  boxShadow: isActive ? `0 0 20px ${emotionColor}66, 0 0 40px ${emotionColor}22` : "none",
+                }}
+                transition={{ duration: 0.5 }}
+              >
+                {isCompleted ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8L6.5 11.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
+                {isActive && (
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    style={{ border: `2px solid ${emotionColor}` }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+              <span className={`text-[10px] uppercase tracking-widest ${isActive ? "text-[#FFF7ED]" : "text-[#8B7E6A]"} transition-colors duration-500`}>
+                {label}
+              </span>
+            </div>
+
+            {i < STEP_LABELS.length - 1 && (
+              <div className="w-12 sm:w-20 h-px mx-2 mb-6">
+                <motion.div
+                  className="h-full rounded-full"
+                  animate={{
+                    backgroundColor: i < activeIndex ? emotionColor : "rgba(255,255,255,0.08)",
+                  }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function ComposeInner() {
   const router = useRouter();
@@ -48,15 +114,19 @@ function ComposeInner() {
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState(false);
   const [shared, setShared] = useState(false);
+  const [audioIntensity, setAudioIntensity] = useState(0);
+  const [compositionEnded, setCompositionEnded] = useState(false);
 
   // Refs
   const toneRef = useRef<any>(null);
   const synthRef = useRef<any>(null);
   const effectsRef = useRef<any[]>([]);
+  const analyserRef = useRef<any>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const noteSpawnRef = useRef<(() => void) | null>(null);
   const noteTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const autoPlayTriggeredRef = useRef(false);
 
   // Pre-select emotion from URL
   useEffect(() => {
@@ -97,6 +167,8 @@ function ComposeInner() {
   const handleCompose = async () => {
     setStep("composing");
     setError("");
+    setCompositionEnded(false);
+    autoPlayTriggeredRef.current = false;
 
     try {
       const res = await fetch("/api/compose", {
@@ -139,13 +211,18 @@ function ComposeInner() {
       try {
         synthRef.current.dispose();
         effectsRef.current.forEach((fx: any) => fx?.dispose());
+        if (analyserRef.current) {
+          analyserRef.current.fft?.dispose();
+          analyserRef.current.waveform?.dispose();
+        }
       } catch {}
     }
 
     const preset = instruments[instrument] || instruments.piano;
-    const { synth, effects } = preset.create(Tone);
+    const { synth, effects, analyser } = preset.create(Tone);
     synthRef.current = synth;
     effectsRef.current = effects;
+    analyserRef.current = analyser || null;
 
     // Set volume
     Tone.Destination.volume.value = volume > 0 ? 20 * Math.log10(volume) : -Infinity;
@@ -155,14 +232,12 @@ function ComposeInner() {
 
     // Schedule notes with onNote callback
     scheduleComposition(Tone, synth, composition, (note: Note) => {
-      // Update active notes
       setActiveNotes((prev) => {
         const next = new Set(prev);
         next.add(note.pitch);
         return next;
       });
 
-      // Clear after 300ms
       const timeout = setTimeout(() => {
         setActiveNotes((prev) => {
           const next = new Set(prev);
@@ -172,28 +247,52 @@ function ComposeInner() {
       }, 300);
       noteTimeoutsRef.current.push(timeout);
 
-      // Trigger particle spawn
       noteSpawnRef.current?.();
     });
 
     // Schedule stop at end
     Tone.Transport.schedule(() => {
       setIsPlaying(false);
+      setCompositionEnded(true);
       Tone.Transport.stop();
     }, `+${dur}`);
   }, [composition, instrument, volume]);
 
-  // Initialize audio when composition arrives
+  // Initialize audio when composition arrives + AUTO-PLAY after a dramatic pause
   useEffect(() => {
-    if (step === "playback" && composition) {
-      initializeAudio();
+    if (step === "playback" && composition && !autoPlayTriggeredRef.current) {
+      autoPlayTriggeredRef.current = true;
+
+      // Dramatic pause — let the title fade in, then auto-play
+      const autoPlayTimeout = setTimeout(async () => {
+        try {
+          await initializeAudio();
+          const Tone = toneRef.current;
+          if (Tone) {
+            await Tone.start();
+            Tone.Transport.start();
+            setIsPlaying(true);
+          }
+        } catch {
+          // If auto-play fails (browser policy), user can click play
+          await initializeAudio();
+        }
+      }, 2000);
+
+      return () => clearTimeout(autoPlayTimeout);
     }
 
     return () => {
-      // Cleanup on unmount
       noteTimeoutsRef.current.forEach(clearTimeout);
       noteTimeoutsRef.current = [];
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, composition]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
       if (toneRef.current) {
         try {
           toneRef.current.Transport.stop();
@@ -207,8 +306,7 @@ function ComposeInner() {
         } catch {}
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, composition]);
+  }, []);
 
   // Volume sync
   useEffect(() => {
@@ -218,13 +316,28 @@ function ComposeInner() {
     }
   }, [volume]);
 
-  // Progress tracking
+  // Progress tracking + audio intensity
   useEffect(() => {
     if (isPlaying && toneRef.current && totalDuration > 0) {
       progressIntervalRef.current = setInterval(() => {
         const secs = toneRef.current.Transport.seconds;
         setCurrentTime(secs);
         setProgress(secs / totalDuration);
+
+        // Calculate audio intensity from FFT for mood ring
+        if (analyserRef.current?.fft) {
+          try {
+            const fftData = analyserRef.current.fft.getValue();
+            if (fftData) {
+              let sum = 0;
+              for (let i = 0; i < fftData.length; i++) {
+                sum += Math.max(0, (fftData[i] as number + 100) / 100);
+              }
+              const avg = sum / fftData.length;
+              setAudioIntensity(Math.min(1, avg * 1.5));
+            }
+          } catch {}
+        }
       }, 50);
     } else {
       if (progressIntervalRef.current) {
@@ -252,6 +365,7 @@ function ComposeInner() {
       await Tone.start();
       Tone.Transport.start();
       setIsPlaying(true);
+      setCompositionEnded(false);
     }
   }, [isPlaying, initializeAudio]);
 
@@ -262,10 +376,10 @@ function ComposeInner() {
     setProgress(0);
     setCurrentTime(0);
     setActiveNotes(new Set());
+    setCompositionEnded(false);
     noteTimeoutsRef.current.forEach(clearTimeout);
     noteTimeoutsRef.current = [];
 
-    // Re-schedule and start
     await initializeAudio();
     await Tone.start();
     Tone.Transport.start();
@@ -301,7 +415,6 @@ function ComposeInner() {
 
   // ---------- Reset ----------
   const handleReset = () => {
-    // Cleanup audio
     if (toneRef.current) {
       try {
         toneRef.current.Transport.stop();
@@ -314,8 +427,15 @@ function ComposeInner() {
         effectsRef.current.forEach((fx: any) => fx?.dispose());
       } catch {}
     }
+    if (analyserRef.current) {
+      try {
+        analyserRef.current.fft?.dispose();
+        analyserRef.current.waveform?.dispose();
+      } catch {}
+    }
     synthRef.current = null;
     effectsRef.current = [];
+    analyserRef.current = null;
 
     setComposition(null);
     setIsPlaying(false);
@@ -324,6 +444,8 @@ function ComposeInner() {
     setActiveNotes(new Set());
     setSaved(false);
     setShared(false);
+    setCompositionEnded(false);
+    autoPlayTriggeredRef.current = false;
     setStep("input");
   };
 
@@ -333,9 +455,283 @@ function ComposeInner() {
       ? emotionColors[selectedEmotions[0]] || "#F59E0B"
       : "#F59E0B";
 
+  const secondaryColor =
+    selectedEmotions.length > 1
+      ? emotionColors[selectedEmotions[1]] || primaryColor
+      : primaryColor;
+
   // ---------- Render ----------
+  // The playback step breaks out of the container for full-screen immersion
+  if (step === "playback" && composition) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5 }}
+        className="relative min-h-screen -mx-6 sm:-mx-0"
+      >
+        {/* ===== IMMERSIVE PERFORMANCE VIEW ===== */}
+
+        {/* Dynamic background that breathes with the music */}
+        <motion.div
+          className="fixed inset-0 pointer-events-none z-0"
+          animate={{
+            background: isPlaying
+              ? `radial-gradient(ellipse at 50% 70%, ${primaryColor}${Math.round(audioIntensity * 25).toString(16).padStart(2, "0")} 0%, transparent 60%), radial-gradient(ellipse at 30% 30%, ${secondaryColor}08 0%, transparent 50%), linear-gradient(to bottom, #0a0a1a, #0F0B1E)`
+              : "linear-gradient(to bottom, #0a0a1a, #0F0B1E)",
+          }}
+          transition={{ duration: 0.8 }}
+        />
+
+        {/* Particle universe — full screen */}
+        <div className="fixed inset-0 pointer-events-none z-[1]">
+          <ParticleCanvas
+            isPlaying={isPlaying}
+            emotionColor={primaryColor}
+            onNoteRef={noteSpawnRef}
+            emotion={selectedEmotions[0]}
+            constellation={true}
+            instrumentColor={instrument}
+          />
+        </div>
+
+        {/* Content layer */}
+        <div className="relative z-10 flex flex-col min-h-screen">
+          {/* Top: Composition info + Mood Ring */}
+          <div className="flex items-start justify-between px-6 pt-8 pb-4">
+            {/* Left: Info overlay (floating glass panel) */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 max-w-sm"
+            >
+              <p className="font-serif text-xs italic text-[#8B7E6A] mb-2 line-clamp-2">
+                &ldquo;{moment.length > 100 ? moment.slice(0, 97) + "..." : moment}&rdquo;
+              </p>
+              <h2
+                className="font-serif text-2xl sm:text-3xl mb-3"
+                style={{
+                  background: `linear-gradient(135deg, ${primaryColor} 0%, #FBBF24 100%)`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                {composition.title}
+              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-[#D4C5A9] border border-white/10">
+                  {composition.key}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-[#D4C5A9] border border-white/10">
+                  {composition.tempo} BPM
+                </span>
+                {selectedEmotions.map((em) => (
+                  <span
+                    key={em}
+                    className="px-2 py-0.5 rounded-full text-[10px] capitalize"
+                    style={{
+                      backgroundColor: `${emotionColors[em] || "#F59E0B"}22`,
+                      color: emotionColors[em] || "#F59E0B",
+                    }}
+                  >
+                    {em}
+                  </span>
+                ))}
+              </div>
+              {/* Elapsed time */}
+              <div className="mt-3 flex items-center gap-2 text-[10px] text-[#8B7E6A] tabular-nums">
+                <span>{formatTime(currentTime)}</span>
+                <span>/</span>
+                <span>{formatTime(totalDuration)}</span>
+              </div>
+            </motion.div>
+
+            {/* Right: Mood Ring */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="hidden sm:block"
+            >
+              <MoodRing
+                emotionColor={primaryColor}
+                secondaryColor={secondaryColor}
+                isPlaying={isPlaying}
+                intensity={audioIntensity}
+                size={100}
+              />
+            </motion.div>
+          </div>
+
+          {/* Middle: Spacer to push piano to bottom third */}
+          <div className="flex-1" />
+
+          {/* Bottom third: Piano / Instrument visualization + Waveform */}
+          <div className="relative px-4 sm:px-8 pb-4">
+            {/* Piano visualization */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 1 }}
+            >
+              {(instrument === "piano" || instrument === "jazz") ? (
+                <PianoVisualization
+                  activeNotes={activeNotes}
+                  emotionColor={primaryColor}
+                />
+              ) : (
+                /* Non-piano instruments: animated orb with instrument icon */
+                <div className="flex items-center justify-center py-8">
+                  <div className="relative">
+                    <motion.div
+                      className="w-32 h-32 rounded-full flex items-center justify-center"
+                      animate={{
+                        scale: isPlaying ? [1, 1.08 + audioIntensity * 0.12, 1] : 1,
+                        boxShadow: isPlaying
+                          ? `0 0 ${40 + audioIntensity * 60}px ${primaryColor}${Math.round(audioIntensity * 80).toString(16).padStart(2, "0")}, 0 0 ${80 + audioIntensity * 120}px ${primaryColor}33`
+                          : `0 0 20px ${primaryColor}22`,
+                      }}
+                      transition={{ duration: 1.5, repeat: isPlaying ? Infinity : 0, ease: "easeInOut" }}
+                      style={{
+                        background: `radial-gradient(circle, ${primaryColor}66, ${primaryColor}22, transparent)`,
+                      }}
+                    >
+                      <Music size={40} style={{ color: primaryColor }} />
+                    </motion.div>
+                    {/* Rings */}
+                    {isPlaying && [0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute inset-0 rounded-full"
+                        style={{ border: `1px solid ${primaryColor}` }}
+                        animate={{
+                          scale: [1, 2 + i * 0.5],
+                          opacity: [0.3, 0],
+                        }}
+                        transition={{
+                          duration: 2,
+                          delay: i * 0.6,
+                          repeat: Infinity,
+                          ease: "easeOut",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Waveform visualizer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 0.8 }}
+              className="h-20 mt-2"
+            >
+              <WaveformVisualizer
+                analyserBundle={analyserRef.current}
+                isPlaying={isPlaying}
+                emotionColor={primaryColor}
+                mode="both"
+              />
+            </motion.div>
+
+            {/* Music DNA — unique fingerprint */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5, duration: 0.8 }}
+              className="mt-2"
+            >
+              <MusicDNA
+                composition={composition}
+                emotionColor={primaryColor}
+                isPlaying={isPlaying}
+                progress={progress}
+                height={40}
+              />
+            </motion.div>
+          </div>
+
+          {/* Transport controls */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.8, duration: 0.6 }}
+            className="px-6 pb-4"
+          >
+            <TransportControls
+              isPlaying={isPlaying}
+              onPlayPause={handlePlayPause}
+              onRestart={handleRestart}
+              progress={progress}
+              currentTime={formatTime(currentTime)}
+              totalTime={formatTime(totalDuration)}
+              volume={volume}
+              onVolumeChange={setVolume}
+            />
+          </motion.div>
+
+          {/* Action buttons — appear after composition ends or always visible */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: compositionEnded ? 1 : 0.7 }}
+            transition={{ duration: 0.6 }}
+            className="flex items-center justify-center gap-3 flex-wrap px-6 pb-8"
+          >
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 text-[#D4C5A9] text-sm hover:border-[#F59E0B]/30 hover:text-[#FFF7ED] transition-all duration-300"
+            >
+              <RotateCcw size={14} />
+              Compose Another
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={saved}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm transition-all duration-300 ${
+                saved
+                  ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                  : "border-white/10 text-[#D4C5A9] hover:border-[#F59E0B]/30 hover:text-[#FFF7ED]"
+              }`}
+            >
+              <Save size={14} />
+              {saved ? "Saved!" : "Save to My Music"}
+            </button>
+
+            <button
+              onClick={handleShare}
+              disabled={shared}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm transition-all duration-300 ${
+                shared
+                  ? "border-[#F59E0B]/30 text-[#F59E0B] bg-[#F59E0B]/10"
+                  : "border-white/10 text-[#D4C5A9] hover:border-[#F59E0B]/30 hover:text-[#FFF7ED]"
+              }`}
+            >
+              <Share2 size={14} />
+              {shared ? "Copied!" : "Share"}
+            </button>
+          </motion.div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <div className="min-h-screen px-6 py-12 max-w-3xl mx-auto">
+      {/* Step progress indicator (hidden during composing animation) */}
+      {step !== "composing" && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <StepIndicator currentStep={step} emotionColor={primaryColor} />
+        </motion.div>
+      )}
+
       <AnimatePresence mode="wait">
         {/* ============================================================
             STEP 1: INPUT
@@ -472,7 +868,7 @@ function ComposeInner() {
                 Choose your sound
               </h1>
               <p className="text-[#8B7E6A]">
-                Each instrument tells your story differently.
+                Each instrument tells your story differently. Hover to preview.
               </p>
             </div>
 
@@ -498,7 +894,7 @@ function ComposeInner() {
                 onClick={handleCompose}
                 className="inline-flex items-center gap-2 px-10 py-4 bg-[#F59E0B] text-[#0F0B1E] rounded-full text-lg font-semibold tracking-wide transition-all duration-300 hover:bg-[#FBBF24] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:scale-105 active:scale-[0.98] animate-gold-glow"
               >
-                Compose
+                Compose My Moment
                 <Sparkles size={20} />
               </button>
             </div>
@@ -528,151 +924,12 @@ function ComposeInner() {
             <ComposingLoader emotions={selectedEmotions} />
           </motion.div>
         )}
-
-        {/* ============================================================
-            STEP 5: PLAYBACK
-            ============================================================ */}
-        {step === "playback" && composition && (
-          <motion.div
-            key="playback"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-8"
-          >
-            {/* User's moment */}
-            <p className="font-serif text-base italic text-[#8B7E6A] text-center max-w-md mx-auto">
-              &ldquo;{moment.length > 120 ? moment.slice(0, 117) + "..." : moment}&rdquo;
-            </p>
-
-            {/* Title */}
-            <h1
-              className="font-serif text-4xl sm:text-5xl text-center"
-              style={{
-                background: `linear-gradient(135deg, ${primaryColor} 0%, #FBBF24 100%)`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              {composition.title}
-            </h1>
-
-            {/* Meta badges */}
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <span className="px-3 py-1 rounded-full text-xs bg-white/5 text-[#D4C5A9] border border-white/10">
-                {composition.key}
-              </span>
-              <span className="px-3 py-1 rounded-full text-xs bg-white/5 text-[#D4C5A9] border border-white/10">
-                {composition.tempo} BPM
-              </span>
-              {selectedEmotions.map((em) => (
-                <span
-                  key={em}
-                  className="px-3 py-1 rounded-full text-xs capitalize"
-                  style={{
-                    backgroundColor: `${emotionColors[em] || "#F59E0B"}22`,
-                    color: emotionColors[em] || "#F59E0B",
-                  }}
-                >
-                  {em}
-                </span>
-              ))}
-            </div>
-
-            {/* Visualization area */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#1A1533]/50 p-6">
-              {/* Particle canvas overlay */}
-              <div className="absolute inset-0 pointer-events-none">
-                <ParticleCanvas
-                  isPlaying={isPlaying}
-                  emotionColor={primaryColor}
-                  onNoteRef={noteSpawnRef}
-                />
-              </div>
-
-              {/* Piano visualization (shown for piano, jazz; placeholder for others) */}
-              {(instrument === "piano" || instrument === "jazz") ? (
-                <div className="relative z-10">
-                  <PianoVisualization
-                    activeNotes={activeNotes}
-                    emotionColor={primaryColor}
-                  />
-                </div>
-              ) : (
-                <div className="relative z-10 flex items-center justify-center h-40">
-                  <div
-                    className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 ${
-                      isPlaying ? "animate-breathe" : ""
-                    }`}
-                    style={{
-                      background: `radial-gradient(circle, ${primaryColor}88, ${primaryColor}33, transparent)`,
-                      boxShadow: isPlaying
-                        ? `0 0 40px ${primaryColor}44, 0 0 80px ${primaryColor}22`
-                        : "none",
-                    }}
-                  >
-                    <Music size={32} style={{ color: primaryColor }} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Transport controls */}
-            <TransportControls
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              onRestart={handleRestart}
-              progress={progress}
-              currentTime={formatTime(currentTime)}
-              totalTime={formatTime(totalDuration)}
-              volume={volume}
-              onVolumeChange={setVolume}
-            />
-
-            {/* Action buttons */}
-            <div className="flex items-center justify-center gap-4 flex-wrap pt-4">
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/10 text-[#D4C5A9] hover:border-[#F59E0B]/30 hover:text-[#FFF7ED] transition-all duration-300"
-              >
-                <RotateCcw size={16} />
-                Compose Another
-              </button>
-
-              <button
-                onClick={handleSave}
-                disabled={saved}
-                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full border transition-all duration-300 ${
-                  saved
-                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                    : "border-white/10 text-[#D4C5A9] hover:border-[#F59E0B]/30 hover:text-[#FFF7ED]"
-                }`}
-              >
-                <Save size={16} />
-                {saved ? "Saved!" : "Save to My Music"}
-              </button>
-
-              <button
-                onClick={handleShare}
-                disabled={shared}
-                className={`inline-flex items-center gap-2 px-6 py-3 rounded-full border transition-all duration-300 ${
-                  shared
-                    ? "border-[#F59E0B]/30 text-[#F59E0B] bg-[#F59E0B]/10"
-                    : "border-white/10 text-[#D4C5A9] hover:border-[#F59E0B]/30 hover:text-[#FFF7ED]"
-                }`}
-              >
-                <Share2 size={16} />
-                {shared ? "Copied!" : "Share This Moment"}
-              </button>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
   );
 }
 
-// Sparkles icon used in sound step
+// Sparkles icon
 function Sparkles({ size, ...props }: { size: number } & React.SVGAttributes<SVGElement>) {
   return (
     <svg

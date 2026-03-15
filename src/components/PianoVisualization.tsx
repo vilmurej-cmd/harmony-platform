@@ -37,21 +37,37 @@ export default function PianoVisualization({
   return (
     <div className="w-full overflow-hidden">
       <svg
-        viewBox={`0 0 ${totalWidth + padding * 2} ${keyHeight + padding * 2}`}
+        viewBox={`0 0 ${totalWidth + padding * 2} ${keyHeight + padding * 2 + 20}`}
         className="w-full max-w-2xl mx-auto"
         role="img"
         aria-label="Piano visualization"
       >
         <defs>
-          <filter id="piano-glow">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feFlood floodColor={emotionColor} floodOpacity="0.6" result="color" />
+          {/* Enhanced glow filter with golden bloom */}
+          <filter id="piano-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feFlood floodColor={emotionColor} floodOpacity="0.7" result="color" />
             <feComposite in="color" in2="blur" operator="in" result="glow" />
             <feMerge>
+              <feMergeNode in="glow" />
               <feMergeNode in="glow" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Upward light beam for active keys */}
+          <linearGradient id="key-beam" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor={emotionColor} stopOpacity="0.4" />
+            <stop offset="100%" stopColor={emotionColor} stopOpacity="0" />
+          </linearGradient>
+
+          {/* Reflection gradient for white keys */}
+          <linearGradient id="white-key-sheen" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.08" />
+            <stop offset="30%" stopColor="#FFFFFF" stopOpacity="0" />
+            <stop offset="90%" stopColor="#000000" stopOpacity="0.03" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.06" />
+          </linearGradient>
         </defs>
 
         {/* White keys */}
@@ -62,6 +78,26 @@ export default function PianoVisualization({
 
           return (
             <g key={note}>
+              {/* Light beam shooting up from active key */}
+              {isActive && (
+                <rect
+                  x={x + keyWidth * 0.2}
+                  y={y - 15}
+                  width={keyWidth * 0.6}
+                  height={20}
+                  fill="url(#key-beam)"
+                  rx={2}
+                >
+                  <animate
+                    attributeName="opacity"
+                    values="0;0.8;0.5"
+                    dur="0.3s"
+                    fill="freeze"
+                  />
+                </rect>
+              )}
+
+              {/* Key body */}
               <rect
                 x={x + 1}
                 y={isActive ? y + 2 : y}
@@ -73,9 +109,23 @@ export default function PianoVisualization({
                 strokeWidth={0.5}
                 filter={isActive ? "url(#piano-glow)" : undefined}
                 style={{
-                  transition: "fill 100ms ease, y 100ms ease",
+                  transition: "fill 80ms ease, y 80ms ease",
                 }}
               />
+
+              {/* Sheen overlay on inactive keys */}
+              {!isActive && (
+                <rect
+                  x={x + 1}
+                  y={y}
+                  width={keyWidth - 2}
+                  height={keyHeight}
+                  rx={4}
+                  fill="url(#white-key-sheen)"
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+
               {/* Note label */}
               <text
                 x={x + keyWidth / 2}
@@ -83,8 +133,8 @@ export default function PianoVisualization({
                 textAnchor="middle"
                 fontSize="8"
                 fill={isActive ? "#FFF7ED" : "#8B7E6A"}
-                opacity={0.6}
-                style={{ transition: "fill 100ms ease" }}
+                opacity={isActive ? 0.9 : 0.4}
+                style={{ transition: "fill 80ms ease, opacity 80ms ease" }}
               >
                 {note}
               </text>
@@ -99,21 +149,41 @@ export default function PianoVisualization({
           const y = padding;
 
           return (
-            <rect
-              key={note}
-              x={x}
-              y={isActive ? y + 2 : y}
-              width={blackKeyWidth}
-              height={blackKeyHeight}
-              rx={3}
-              fill={isActive ? emotionColor : "#1A1533"}
-              stroke={isActive ? emotionColor : "#0F0B1E"}
-              strokeWidth={0.5}
-              filter={isActive ? "url(#piano-glow)" : undefined}
-              style={{
-                transition: "fill 100ms ease, y 100ms ease",
-              }}
-            />
+            <g key={note}>
+              {/* Light beam for active black key */}
+              {isActive && (
+                <rect
+                  x={x + blackKeyWidth * 0.15}
+                  y={y - 12}
+                  width={blackKeyWidth * 0.7}
+                  height={16}
+                  fill="url(#key-beam)"
+                  rx={2}
+                >
+                  <animate
+                    attributeName="opacity"
+                    values="0;0.6;0.4"
+                    dur="0.3s"
+                    fill="freeze"
+                  />
+                </rect>
+              )}
+
+              <rect
+                x={x}
+                y={isActive ? y + 2 : y}
+                width={blackKeyWidth}
+                height={blackKeyHeight}
+                rx={3}
+                fill={isActive ? emotionColor : "#1A1533"}
+                stroke={isActive ? emotionColor : "#0F0B1E"}
+                strokeWidth={0.5}
+                filter={isActive ? "url(#piano-glow)" : undefined}
+                style={{
+                  transition: "fill 80ms ease, y 80ms ease",
+                }}
+              />
+            </g>
           );
         })}
       </svg>
