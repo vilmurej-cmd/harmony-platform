@@ -4,17 +4,20 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
+import UniversalLanguageSelector from "@/components/UniversalLanguageSelector";
 
 const navLinks = [
-  { href: "/compose", label: "Compose" },
-  { href: "/my-music", label: "My Music" },
-  { href: "/about", label: "About" },
+  { href: "/compose", labelKey: "nav.compose" },
+  { href: "/my-music", labelKey: "nav.myMusic" },
+  { href: "/about", labelKey: "nav.about" },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -58,24 +61,30 @@ export default function Navigation() {
                     : "text-[#8B7E6A] hover:text-[#D4C5A9]"
                 }`}
               >
-                {link.label}
+                {t(link.labelKey)}
                 {isActive && (
                   <span className="absolute -bottom-1 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#F59E0B] to-transparent" />
                 )}
               </Link>
             );
           })}
+
+          {/* Language Selector */}
+          <UniversalLanguageSelector />
         </div>
 
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden p-2 text-[#8B7E6A] hover:text-[#F59E0B] transition-colors duration-300"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        {/* Mobile: Language + Hamburger */}
+        <div className="md:hidden flex items-center gap-2">
+          <UniversalLanguageSelector />
+          <button
+            className="p-2 text-[#8B7E6A] hover:text-[#F59E0B] transition-colors duration-300"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -97,7 +106,7 @@ export default function Navigation() {
                     : "text-[#8B7E6A] hover:text-[#D4C5A9]"
                 }`}
               >
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             );
           })}

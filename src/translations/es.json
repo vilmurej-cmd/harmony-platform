@@ -1,0 +1,10 @@
+{
+  "nav": { "home": "Inicio", "compose": "Componer", "myMusic": "Mi Música", "about": "Acerca de" },
+  "common": { "loading": "Componiendo...", "play": "Reproducir", "pause": "Pausar", "restart": "Reiniciar", "share": "Compartir Este Momento", "save": "Guardar en Mi Música", "composeAnother": "Componer Otra", "close": "Cerrar" },
+  "hero": { "title": "Describe un momento. Escúchalo convertirse en música.", "subtitle": "Cada momento de tu vida merece su propia música.", "cta": "Comenzar a Componer" },
+  "compose": { "step1Title": "Tu Momento", "step1Hint": "Cuanto más compartas, más personal será la música.", "step2Title": "¿Tu momento tiene un color?", "step3Title": "Elige Tu Sonido", "step4Title": "Duración", "composeButton": "Componer" },
+  "emotions": { "joy": "Alegría", "nostalgia": "Nostalgia", "triumph": "Triunfo", "serenity": "Serenidad", "longing": "Anhelo", "wonder": "Asombro", "bittersweet": "Agridulce", "power": "Poder", "peace": "Paz", "grief": "Duelo", "love": "Amor", "hope": "Esperanza" },
+  "instruments": { "piano": "Piano Solo", "pianoDesc": "Íntimo. Cada nota con intención.", "strings": "Ensamble de Cuerdas", "stringsDesc": "Emoción envolvente. Profundidad cinematográfica.", "ambient": "Pads Ambientales", "ambientDesc": "Flotante. Atmosférico. Sin límites.", "jazz": "Trío de Jazz", "jazzDesc": "Espontáneo. Con alma. Cálido.", "cinematic": "Orquesta Cinematográfica", "cinematicDesc": "Épico. Poderoso. Transformador." },
+  "footer": { "mission": "La música es el idioma que habla el alma cuando las palabras no alcanzan.", "company": "Una Empresa de Vilmure Ventures" },
+  "language": { "searchLanguages": "Buscar idiomas...", "recentlyUsed": "Usados Recientemente", "popular": "Idiomas Populares", "allLanguages": "Todos los Idiomas" }
+}

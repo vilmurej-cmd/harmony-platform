@@ -1,0 +1,10 @@
+{
+  "nav": { "home": "Home", "compose": "Compose", "myMusic": "My Music", "about": "About" },
+  "common": { "loading": "Composing...", "play": "Play", "pause": "Pause", "restart": "Restart", "share": "Share This Moment", "save": "Save to My Music", "composeAnother": "Compose Another", "close": "Close" },
+  "hero": { "title": "Describe a moment. Hear it become music.", "subtitle": "Every moment of your life deserves its own music.", "cta": "Begin Composing" },
+  "compose": { "step1Title": "Your Moment", "step1Hint": "The more you share, the more personal the music becomes.", "step2Title": "Does your moment have a color?", "step3Title": "Choose Your Sound", "step4Title": "Duration", "composeButton": "Compose" },
+  "emotions": { "joy": "Joy", "nostalgia": "Nostalgia", "triumph": "Triumph", "serenity": "Serenity", "longing": "Longing", "wonder": "Wonder", "bittersweet": "Bittersweet", "power": "Power", "peace": "Peace", "grief": "Grief", "love": "Love", "hope": "Hope" },
+  "instruments": { "piano": "Piano Solo", "pianoDesc": "Intimate. Every note intentional.", "strings": "Strings Ensemble", "stringsDesc": "Sweeping emotion. Cinematic depth.", "ambient": "Ambient Pads", "ambientDesc": "Floating. Atmospheric. Boundless.", "jazz": "Jazz Trio", "jazzDesc": "Spontaneous. Soulful. Warm.", "cinematic": "Cinematic Orchestra", "cinematicDesc": "Epic. Powerful. Transformative." },
+  "footer": { "mission": "Music is the language the soul speaks when words aren't enough.", "company": "A Vilmure Ventures Company" },
+  "language": { "searchLanguages": "Search languages...", "recentlyUsed": "Recently Used", "popular": "Popular Languages", "allLanguages": "All Languages" }
+}

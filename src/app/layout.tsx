@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
+import ClientLayout from "@/components/ClientLayout";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -33,9 +32,7 @@ export default function RootLayout({
         className="font-sans bg-[#0F0B1E] text-[#FFF7ED] antialiased min-h-screen flex flex-col"
         style={{ fontFamily: "var(--font-jakarta), system-ui, sans-serif" }}
       >
-        <Navigation />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

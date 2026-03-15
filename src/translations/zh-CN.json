@@ -1,0 +1,10 @@
+{
+  "nav": { "home": "首页", "compose": "作曲", "myMusic": "我的音乐", "about": "关于" },
+  "common": { "loading": "谱曲中...", "play": "播放", "pause": "暂停", "restart": "重新开始", "share": "分享这一刻", "save": "保存到我的音乐", "composeAnother": "再谱一曲", "close": "关闭" },
+  "hero": { "title": "描述一个瞬间，聆听它化为音乐。", "subtitle": "你生命中的每一刻，都值得拥有属于它的旋律。", "cta": "开始作曲" },
+  "compose": { "step1Title": "你的瞬间", "step1Hint": "你分享得越多，音乐就越贴近你的心。", "step2Title": "你的瞬间有什么颜色？", "step3Title": "选择你的音色", "step4Title": "时长", "composeButton": "作曲" },
+  "emotions": { "joy": "喜悦", "nostalgia": "怀旧", "triumph": "凯旋", "serenity": "宁静", "longing": "思念", "wonder": "惊叹", "bittersweet": "苦乐参半", "power": "力量", "peace": "安宁", "grief": "哀伤", "love": "爱", "hope": "希望" },
+  "instruments": { "piano": "钢琴独奏", "pianoDesc": "细腻入微，每个音符都意味深长。", "strings": "弦乐合奏", "stringsDesc": "波澜壮阔的情感，影院般的深度。", "ambient": "氛围音垫", "ambientDesc": "飘渺、空灵、无边无际。", "jazz": "爵士三重奏", "jazzDesc": "即兴、灵魂、温暖。", "cinematic": "交响乐团", "cinematicDesc": "史诗、震撼、蜕变。" },
+  "footer": { "mission": "音乐，是灵魂在言语无法抵达之处的低语。", "company": "Vilmure Ventures 旗下公司" },
+  "language": { "searchLanguages": "搜索语言...", "recentlyUsed": "最近使用", "popular": "热门语言", "allLanguages": "所有语言" }
+}
