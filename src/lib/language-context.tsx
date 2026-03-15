@@ -12,6 +12,7 @@ import {
   getCachedTranslation,
   setCachedTranslation,
 } from "./translation-cache";
+import enTranslations from "@/translations/en.json";
 
 /* ================================================================
    Language definitions — 75+ languages with RTL flags
@@ -152,15 +153,10 @@ function flattenDict(
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(LANGUAGES[0]);
   const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [enFallback, setEnFallback] = useState<Record<string, string>>({});
+  const [enFallback] = useState<Record<string, string>>(
+    () => flattenDict(enTranslations as unknown as Record<string, unknown>)
+  );
   const [recentLanguages, setRecentLanguages] = useState<string[]>([]);
-
-  // Load English fallback on mount
-  useEffect(() => {
-    import("@/translations/en.json").then((mod) => {
-      setEnFallback(flattenDict(mod.default as unknown as Record<string, unknown>));
-    });
-  }, []);
 
   // Restore saved language
   useEffect(() => {
