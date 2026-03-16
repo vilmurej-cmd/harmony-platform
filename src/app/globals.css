@@ -57,170 +57,139 @@
 }
 
 /* ============================================================
-   Base Styles
+   Base Styles — in @layer base so utilities can override
    ============================================================ */
 
-body {
-  background-color: var(--bg-deep);
-  color: var(--text-primary);
-  line-height: 1.75;
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-playfair), Georgia, serif;
-  line-height: 1.2;
-}
+  body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.75;
+  }
 
-::selection {
-  background: rgba(245, 158, 11, 0.35);
-  color: #FFF7ED;
-}
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), Georgia, serif;
+    line-height: 1.2;
+  }
 
-/* Focus ring for accessibility */
-:focus-visible {
-  outline: 2px solid var(--harmony-gold);
-  outline-offset: 2px;
-}
+  ::selection {
+    background: rgba(245, 158, 11, 0.35);
+    color: #FFF7ED;
+  }
 
-/* Smooth anchor scrolling */
-html {
-  scroll-behavior: smooth;
+  :focus-visible {
+    outline: 2px solid var(--harmony-gold);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-deep);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(245, 158, 11, 0.25);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.45);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(245, 158, 11, 0.25) var(--bg-deep);
+  }
 }
 
 /* ============================================================
-   Animations
+   Components — in @layer components so utilities can override
+   ============================================================ */
+
+@layer components {
+  .animate-breathe {
+    animation: breathe 4s ease-in-out infinite;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out both;
+  }
+
+  .animate-gentle-pulse {
+    animation: gentlePulse 3s ease-in-out infinite;
+  }
+
+  .animate-gold-glow {
+    animation: goldGlow 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-sine-wave {
+    animation: sineWave 2s ease-in-out infinite;
+  }
+
+  /* Staggered entrance delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-700 { animation-delay: 700ms; }
+  .delay-1000 { animation-delay: 1000ms; }
+}
+
+/* ============================================================
+   Keyframes
    ============================================================ */
 
 @keyframes breathe {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes gentlePulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 @keyframes goldGlow {
-  0%, 100% {
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2), 0 0 24px rgba(245, 158, 11, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.4), 0 0 48px rgba(245, 158, 11, 0.2);
-  }
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.2), 0 0 24px rgba(245, 158, 11, 0.1); }
+  50% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.4), 0 0 48px rgba(245, 158, 11, 0.2); }
 }
 
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes sineWave {
-  0% {
-    d: path("M 0 50 Q 25 30, 50 50 T 100 50");
-  }
-  50% {
-    d: path("M 0 50 Q 25 70, 50 50 T 100 50");
-  }
-  100% {
-    d: path("M 0 50 Q 25 30, 50 50 T 100 50");
-  }
-}
-
-.animate-breathe {
-  animation: breathe 4s ease-in-out infinite;
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s ease-out both;
-}
-
-.animate-gentle-pulse {
-  animation: gentlePulse 3s ease-in-out infinite;
-}
-
-.animate-gold-glow {
-  animation: goldGlow 3s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-sine-wave {
-  animation: sineWave 2s ease-in-out infinite;
-}
-
-/* Staggered entrance delays */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
-.delay-700 { animation-delay: 700ms; }
-.delay-1000 { animation-delay: 1000ms; }
-
-/* ============================================================
-   Scrollbar
-   ============================================================ */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-deep);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.25);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.45);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(245, 158, 11, 0.25) var(--bg-deep);
+  0% { d: path("M 0 50 Q 25 30, 50 50 T 100 50"); }
+  50% { d: path("M 0 50 Q 25 70, 50 50 T 100 50"); }
+  100% { d: path("M 0 50 Q 25 30, 50 50 T 100 50"); }
 }
 
 /* ============================================================
-   Reduced Motion
+   Media Queries
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -228,23 +197,8 @@ html {
   }
 }
 
-/* ============================================================
-   Print
-   ============================================================ */
-
 @media print {
-  nav,
-  footer,
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    background: white;
-    color: black;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    color: black;
-  }
+  nav, footer, .no-print { display: none !important; }
+  body { background: white; color: black; }
+  h1, h2, h3, h4, h5, h6 { color: black; }
 }
