@@ -8,6 +8,9 @@ import { Music } from "lucide-react";
 import PianoVisualization from "@/components/PianoVisualization";
 import ParticleCanvas from "@/components/ParticleCanvas";
 import TransportControls from "@/components/TransportControls";
+import WaveformVisualizer from "@/components/WaveformVisualizer";
+import MoodRing from "@/components/MoodRing";
+import MusicDNA from "@/components/MusicDNA";
 import { decodeComposition } from "@/lib/share";
 import type { SharePayload } from "@/lib/share";
 import { emotionColors } from "@/lib/emotion-colors";
@@ -27,12 +30,14 @@ function PlayInner() {
   const [totalDuration, setTotalDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [activeNotes, setActiveNotes] = useState<Set<string>>(new Set());
-  const [audioReady, setAudioReady] = useState(false);
+  const [audioIntensity, setAudioIntensity] = useState(0);
+  const [compositionEnded, setCompositionEnded] = useState(false);
 
   // Refs
   const toneRef = useRef<any>(null);
   const synthRef = useRef<any>(null);
   const effectsRef = useRef<any[]>([]);
+  const analyserRef = useRef<any>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const noteSpawnRef = useRef<(() => void) | null>(null);
   const noteTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -56,15 +61,17 @@ function PlayInner() {
     payload?.emotions?.[0]
       ? emotionColors[payload.emotions[0]] || "#F59E0B"
       : "#F59E0B";
+  const secondaryColor =
+    payload?.emotions?.[1]
+      ? emotionColors[payload.emotions[1]] || primaryColor
+      : primaryColor;
 
-  // ---------- Format time ----------
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  // ---------- Initialize audio ----------
   const initializeAudio = useCallback(async () => {
     if (!composition) return;
 
@@ -74,19 +81,22 @@ function PlayInner() {
     const Tone = await initAudio();
     toneRef.current = Tone;
 
-    // Cleanup previous
     if (synthRef.current) {
       try {
         synthRef.current.dispose();
         effectsRef.current.forEach((fx: any) => fx?.dispose());
+        if (analyserRef.current) {
+          analyserRef.current.fft?.dispose();
+          analyserRef.current.waveform?.dispose();
+        }
       } catch {}
     }
 
-    // Default to piano for shared compositions
     const preset = instruments.piano;
-    const { synth, effects } = preset.create(Tone);
+    const { synth, effects, analyser } = preset.create(Tone);
     synthRef.current = synth;
     effectsRef.current = effects;
+    analyserRef.current = analyser || null;
 
     Tone.Destination.volume.value = volume > 0 ? 20 * Math.log10(volume) : -Infinity;
 
@@ -114,10 +124,9 @@ function PlayInner() {
 
     Tone.Transport.schedule(() => {
       setIsPlaying(false);
+      setCompositionEnded(true);
       Tone.Transport.stop();
     }, `+${dur}`);
-
-    setAudioReady(true);
   }, [composition, volume]);
 
   // Initialize on composition load
@@ -154,13 +163,26 @@ function PlayInner() {
     }
   }, [volume]);
 
-  // Progress tracking
+  // Progress + intensity tracking
   useEffect(() => {
     if (isPlaying && toneRef.current && totalDuration > 0) {
       progressIntervalRef.current = setInterval(() => {
         const secs = toneRef.current.Transport.seconds;
         setCurrentTime(secs);
         setProgress(secs / totalDuration);
+
+        if (analyserRef.current?.fft) {
+          try {
+            const fftData = analyserRef.current.fft.getValue();
+            if (fftData) {
+              let sum = 0;
+              for (let i = 0; i < fftData.length; i++) {
+                sum += Math.max(0, (fftData[i] as number + 100) / 100);
+              }
+              setAudioIntensity(Math.min(1, (sum / fftData.length) * 1.5));
+            }
+          } catch {}
+        }
       }, 50);
     } else {
       if (progressIntervalRef.current) {
@@ -173,7 +195,6 @@ function PlayInner() {
     };
   }, [isPlaying, totalDuration]);
 
-  // ---------- Transport handlers ----------
   const handlePlayPause = useCallback(async () => {
     if (!toneRef.current) {
       await initializeAudio();
@@ -188,6 +209,7 @@ function PlayInner() {
       await Tone.start();
       Tone.Transport.start();
       setIsPlaying(true);
+      setCompositionEnded(false);
     }
   }, [isPlaying, initializeAudio]);
 
@@ -198,6 +220,7 @@ function PlayInner() {
     setProgress(0);
     setCurrentTime(0);
     setActiveNotes(new Set());
+    setCompositionEnded(false);
     noteTimeoutsRef.current.forEach(clearTimeout);
     noteTimeoutsRef.current = [];
 
@@ -216,9 +239,7 @@ function PlayInner() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="text-5xl mb-4">
-            <Music size={48} className="text-[#8B7E6A] mx-auto" />
-          </div>
+          <Music size={48} className="text-[#8B7E6A] mx-auto" />
           <h1 className="font-serif text-2xl text-[#D4C5A9]">
             This composition link appears to be invalid
           </h1>
@@ -245,86 +266,142 @@ function PlayInner() {
     );
   }
 
-  // ---------- Main playback ----------
+  // ---------- Immersive playback ----------
   return (
-    <div className="min-h-screen px-6 py-12 max-w-2xl mx-auto">
+    <div className="relative min-h-screen">
+      {/* Dynamic background */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        className="fixed inset-0 pointer-events-none z-0"
+        animate={{
+          background: isPlaying
+            ? `radial-gradient(ellipse at 50% 70%, ${primaryColor}15 0%, transparent 60%), linear-gradient(to bottom, #0a0a1a, #0F0B1E)`
+            : "linear-gradient(to bottom, #0a0a1a, #0F0B1E)",
+        }}
         transition={{ duration: 0.8 }}
-        className="space-y-8"
-      >
-        {/* Moment text */}
-        <p className="font-serif text-base italic text-[#8B7E6A] text-center max-w-md mx-auto">
-          &ldquo;{payload.moment.length > 150 ? payload.moment.slice(0, 147) + "..." : payload.moment}&rdquo;
-        </p>
+      />
 
-        {/* Title */}
-        <h1
-          className="font-serif text-4xl sm:text-5xl text-center"
-          style={{
-            background: `linear-gradient(135deg, ${primaryColor} 0%, #FBBF24 100%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          {composition.title}
-        </h1>
+      {/* Particles */}
+      <div className="fixed inset-0 pointer-events-none z-[1]">
+        <ParticleCanvas
+          isPlaying={isPlaying}
+          emotionColor={primaryColor}
+          onNoteRef={noteSpawnRef}
+          emotion={payload.emotions?.[0]}
+          constellation={true}
+        />
+      </div>
 
-        {/* Emotion badges */}
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          <span className="px-3 py-1 rounded-full text-xs bg-white/5 text-[#D4C5A9] border border-white/10">
-            {composition.key}
-          </span>
-          <span className="px-3 py-1 rounded-full text-xs bg-white/5 text-[#D4C5A9] border border-white/10">
-            {composition.tempo} BPM
-          </span>
-          {payload.emotions.map((em) => (
-            <span
-              key={em}
-              className="px-3 py-1 rounded-full text-xs capitalize"
+      {/* Content */}
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Top: Info + Mood Ring */}
+        <div className="flex items-start justify-between px-6 pt-8 pb-4">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 max-w-sm"
+          >
+            <p className="font-serif text-xs italic text-[#8B7E6A] mb-2 line-clamp-2">
+              &ldquo;{payload.moment.length > 100 ? payload.moment.slice(0, 97) + "..." : payload.moment}&rdquo;
+            </p>
+            <h2
+              className="font-serif text-2xl sm:text-3xl mb-3"
               style={{
-                backgroundColor: `${emotionColors[em] || "#F59E0B"}22`,
-                color: emotionColors[em] || "#F59E0B",
+                background: `linear-gradient(135deg, ${primaryColor} 0%, #FBBF24 100%)`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
-              {em}
-            </span>
-          ))}
+              {composition.title}
+            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-[#D4C5A9] border border-white/10">
+                {composition.key}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-[#D4C5A9] border border-white/10">
+                {composition.tempo} BPM
+              </span>
+              {payload.emotions.map((em) => (
+                <span
+                  key={em}
+                  className="px-2 py-0.5 rounded-full text-[10px] capitalize"
+                  style={{
+                    backgroundColor: `${emotionColors[em] || "#F59E0B"}22`,
+                    color: emotionColors[em] || "#F59E0B",
+                  }}
+                >
+                  {em}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-[#8B7E6A]/50 mt-3">Composed with HARMONY</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.8, duration: 0.6 }}
+            className="hidden sm:block"
+          >
+            <MoodRing
+              emotionColor={primaryColor}
+              secondaryColor={secondaryColor}
+              isPlaying={isPlaying}
+              intensity={audioIntensity}
+              size={90}
+            />
+          </motion.div>
         </div>
 
-        {/* Visualization */}
-        <div className="relative rounded-2xl overflow-hidden bg-[#1A1533]/50 p-6">
-          <div className="absolute inset-0 pointer-events-none">
-            <ParticleCanvas
-              isPlaying={isPlaying}
-              emotionColor={primaryColor}
-              onNoteRef={noteSpawnRef}
-            />
-          </div>
+        <div className="flex-1" />
 
-          <div className="relative z-10">
+        {/* Bottom: Piano + Waveform + DNA */}
+        <div className="relative px-4 sm:px-8 pb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 1 }}
+          >
             <PianoVisualization
               activeNotes={activeNotes}
               emotionColor={primaryColor}
             />
+          </motion.div>
+
+          <div className="h-20 mt-2">
+            <WaveformVisualizer
+              analyserBundle={analyserRef.current}
+              isPlaying={isPlaying}
+              emotionColor={primaryColor}
+              mode="both"
+            />
           </div>
+
+          <MusicDNA
+            composition={composition}
+            emotionColor={primaryColor}
+            isPlaying={isPlaying}
+            progress={progress}
+            height={35}
+          />
         </div>
 
         {/* Transport */}
-        <TransportControls
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          onRestart={handleRestart}
-          progress={progress}
-          currentTime={formatTime(currentTime)}
-          totalTime={formatTime(totalDuration)}
-          volume={volume}
-          onVolumeChange={setVolume}
-        />
+        <div className="px-6 pb-4">
+          <TransportControls
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onRestart={handleRestart}
+            progress={progress}
+            currentTime={formatTime(currentTime)}
+            totalTime={formatTime(totalDuration)}
+            volume={volume}
+            onVolumeChange={setVolume}
+          />
+        </div>
 
         {/* CTA */}
-        <div className="text-center pt-8">
+        <div className="text-center px-6 pb-8">
           <p className="text-sm text-[#8B7E6A] mb-4">Every moment deserves its own music.</p>
           <Link
             href="/compose"
@@ -333,12 +410,7 @@ function PlayInner() {
             Compose Your Own
           </Link>
         </div>
-
-        {/* Branding */}
-        <p className="text-center text-xs text-[#8B7E6A]/50 pt-4">
-          Composed with HARMONY
-        </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

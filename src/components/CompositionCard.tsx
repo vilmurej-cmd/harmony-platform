@@ -1,6 +1,7 @@
-import { Play, Square, Trash2 } from "lucide-react";
+import { Play, Square, Trash2, Share2 } from "lucide-react";
 import type { SavedComposition } from "@/lib/music-storage";
 import { emotionColors, emotionEmojis } from "@/lib/emotion-colors";
+import { encodeComposition, generateShareText } from "@/lib/share";
 
 const instrumentEmojis: Record<string, string> = {
   piano: "\uD83C\uDFB9",
@@ -39,14 +40,33 @@ export default function CompositionCard({
       }`}
       style={{ backgroundColor: "rgba(26, 21, 51, 0.8)" }}
     >
-      {/* Delete button */}
-      <button
-        onClick={onDelete}
-        className="absolute top-4 right-4 p-1.5 text-[#8B7E6A] opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all duration-300"
-        aria-label={`Delete ${composition.title}`}
-      >
-        <Trash2 size={14} />
-      </button>
+      {/* Action buttons */}
+      <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <button
+          onClick={() => {
+            const encoded = encodeComposition(
+              composition.composition,
+              composition.moment,
+              composition.title,
+              composition.emotions,
+            );
+            const url = `${window.location.origin}/play?c=${encoded}`;
+            const text = generateShareText(composition.title, composition.moment);
+            navigator.clipboard.writeText(`${text}\n\n${url}`);
+          }}
+          className="p-1.5 text-[#8B7E6A] hover:text-[#F59E0B] transition-colors duration-300"
+          aria-label={`Share ${composition.title}`}
+        >
+          <Share2 size={14} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 text-[#8B7E6A] hover:text-red-400 transition-colors duration-300"
+          aria-label={`Delete ${composition.title}`}
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
 
       {/* Title */}
       <h3 className="font-serif text-lg text-[#F59E0B] mb-2 pr-8">
