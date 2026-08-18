@@ -64,9 +64,14 @@ RULES:
 4. Pitch range: C2–C6. Use the instrument's natural range.
 5. Velocity: 0.0–1.0. Should align with the dynamic marking.
 6. Create a dynamic arc — start soft, build to a climax, then resolve. The dynamicArc array must match the number of measures.
-7. Melody should be singable — stepwise motion with occasional leaps. Use repetition and variation.
-8. Harmony should support the melody — use chord tones, suspensions, and voice leading.
-9. Bass should ground the harmony — root motion, occasional passing tones.
+7. MELODY — write a THEME, not an exercise. This is the most important rule:
+   a. Invent a short MOTIF (2–4 notes with a distinctive rhythm) in bar 1 and build everything from it: repeat it, transpose it, invert it, stretch its rhythm. A listener must be able to hum the motif after one hearing.
+   b. NEVER walk up or down a scale for more than 3 consecutive notes. Break lines with direction changes, leaps of a 3rd–6th, and returns.
+   c. Vary the rhythm inside every measure — mix at least two different note durations, use dotted rhythms and off-beat entrances ("x:1:2", "x:2:2"), and leave RESTS. Silence between phrases is part of the melody; do not fill every beat.
+   d. Phrase in 4-bar arcs: statement → echo (varied repeat) → lift (rise in tension) → resolve (breathe). The single highest note of the piece appears exactly once, at the climax.
+   e. End phrases on longer notes ("2n", "2n.") so the music breathes.
+8. Harmony should support the melody — CHANGE chords between measures (real harmonic rhythm, not one chord repeated), use inversions, suspensions that resolve, and voice leading. 2–4 harmony notes per measure is plenty; place some off the downbeat.
+9. Bass should ground the harmony — root motion with passing tones on weak beats; give the bass its own gentle contour, never the same note for two consecutive measures unless the harmony truly holds.
 10. Emotional mapping:
     - Joy/triumph: major keys, wider intervals, faster tempo, staccato
     - Nostalgia/longing: minor keys, 6ths/7ths, moderate tempo, legato
@@ -76,8 +81,8 @@ RULES:
     - Love: warm 3rds/6ths, gentle suspensions, lyrical melody
     - Hope: major with added 9ths, ascending phrases, crescendo arc
 11. For ${instrument}: tailor the voicing and texture to suit the instrument's character.
-12. Every measure MUST have at least one melody note. Harmony and bass can be sparse for texture.
-13. Make it musical — not just technically correct. It should MOVE the listener.`;
+12. Most measures should have melody, but a one-measure rest after a big phrase is welcome. Harmony and bass can be sparse for texture.
+13. Make it musical — not just technically correct. It should MOVE the listener. Before answering, silently hum through your melody: if it sounds like a warm-up scale or an arpeggio drill, rewrite it.`;
 
     const userMessage = `Compose a ${instrument} piece (emotions: ${emotions.join(", ")}) for this moment: "${moment}"`;
 
