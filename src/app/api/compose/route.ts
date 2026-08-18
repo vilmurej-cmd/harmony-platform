@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { demoComposition } from "@/lib/demo-composition";
+import { guardRequest, clampNum, capText } from "@/lib/api-guard";
+
+const ALLOWED_INSTRUMENTS = ["Piano", "Strings", "Ambient", "Jazz", "Cinematic"];
 
 export async function POST(request: NextRequest) {
+  // composing is expensive (GPT-4o) — tight limits: 5/min, 20/hour per IP
+  const blocked =
+    guardRequest(request, { limit: 5, windowMs: 60_000 }) ??
+    guardRequest(request, { limit: 20, windowMs: 3_600_000, dailyCap: 1000 });
+  if (blocked) return blocked;
+
   try {
-    const { moment, emotions, instrument, durationSeconds } = await request.json();
+    const body = await request.json();
+
+    // ---------- Input caps (never trust the client) ----------
+    const moment = capText(body.moment, 600);
+    const emotions: string[] = (Array.isArray(body.emotions) ? body.emotions : [])
+      .slice(0, 5)
+      .map((e: unknown) => capText(e, 30))
+      .filter(Boolean);
+    const instrument = ALLOWED_INSTRUMENTS.includes(body.instrument) ? body.instrument : "Piano";
+    const durationSeconds = clampNum(body.durationSeconds, 16, 120, 60);
 
     // ---------- Fallback to demo if no API key ----------
     const apiKey = process.env.OPENAI_API_KEY;

@@ -49,21 +49,23 @@ const sampleCompositions = [
   { title: "Paper Boats", emotion: "nostalgia", instrument: "Ambient", bpm: 66, color: "#A78BFA", playable: false },
 ];
 
-const testimonials = [
+// Honest by design: no invented testimonials. These are example moments —
+// invitations, clearly framed as such, for what YOUR composition could be.
+const momentStories = [
   {
-    quote: "I described losing my father. HARMONY composed something that made me cry in the most healing way.",
-    author: "Sarah K.",
-    role: "Teacher",
+    quote: "The last phone call with my grandmother — her laugh, the long pauses, the way she said my name.",
+    emotion: "nostalgia",
+    instrument: "Piano",
   },
   {
-    quote: "I used it for our wedding. Now we have a song that IS our love story.",
-    author: "Marcus & Elena",
-    role: "Married 2025",
+    quote: "Our first dance. Nobody else on the floor. The whole room disappearing.",
+    emotion: "love",
+    instrument: "Strings",
   },
   {
-    quote: "My students describe their favorite memories and hear them as music. They've never been more engaged.",
-    author: "Prof. James Liu",
-    role: "Music Educator",
+    quote: "Rain on the tin roof of my childhood home, the summer I turned nine.",
+    emotion: "peace",
+    instrument: "Ambient",
   },
 ];
 
@@ -616,13 +618,16 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="font-serif text-3xl sm:text-4xl text-center mb-12 text-[#FFF7ED]"
+          className="font-serif text-3xl sm:text-4xl text-center mb-3 text-[#FFF7ED]"
         >
-          Moments turned to music
+          Moments waiting to become music
         </motion.h2>
+        <p className="text-center text-sm text-[#8B7E6A] mb-12">
+          Example moments — what could yours sound like?
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
+          {momentStories.map((t, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
@@ -637,8 +642,8 @@ export default function Home() {
                 &ldquo;{t.quote}&rdquo;
               </p>
               <div>
-                <p className="text-[#FFF7ED] text-sm font-medium">{t.author}</p>
-                <p className="text-[10px] text-[#8B7E6A] uppercase tracking-widest">{t.role}</p>
+                <p className="text-[#FFF7ED] text-sm font-medium capitalize">{t.emotion}</p>
+                <p className="text-[10px] text-[#8B7E6A] uppercase tracking-widest">{t.instrument}</p>
               </div>
             </motion.div>
           ))}

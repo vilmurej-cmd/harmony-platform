@@ -19,6 +19,20 @@ export const metadata: Metadata = {
   title: "HARMONY — Every Moment Deserves Its Own Music",
   description:
     "Describe a moment. Hear it become music. AI-powered emotional music composition. Free. No account needed.",
+  openGraph: {
+    title: "HARMONY — Every Moment Deserves Its Own Music",
+    description:
+      "Describe a moment — a memory, a feeling, a person — and hear it become an original piece of music.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "HARMONY — moments turned to music" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "HARMONY — Every Moment Deserves Its Own Music",
+    description:
+      "Describe a moment — a memory, a feeling, a person — and hear it become an original piece of music.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
